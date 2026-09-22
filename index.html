@@ -349,15 +349,27 @@ function showMenu(id,btn){
     if(!title) return;
     if(/cold drinks/i.test(title)) return;
 
-    // Pizza size cards: create one cart button for each displayed size/price.
+    // Pizza cards: add every individual pizza name with each size/price.
     const sizeSpans=card.querySelectorAll('.size-row span');
     if(sizeSpans.length){
-      sizeSpans.forEach(span=>{
+      const sizeData=[...sizeSpans].map((span,index)=>{
         const m=span.textContent.match(/₹\s*(\d+)/);
-        if(!m) return;
-        const price=Number(m[1]);
-        const label=span.textContent.trim();
-        addButton(card,`${title} — ${label}`,price,`🛒 Add ${label}`);
+        if(!m) return null;
+        const fallback=['Regular','Medium','Large'][index] || `Size ${index+1}`;
+        const raw=span.textContent.trim();
+        const size=(raw.match(/^(Regular|Medium|Large)/i)?.[1]) || fallback;
+        return {size,price:Number(m[1])};
+      }).filter(Boolean);
+
+      // The pizza names are listed in the paragraph directly under the heading.
+      const desc=card.querySelector('p')?.textContent || '';
+      const names=desc.split('•').map(x=>x.trim()).filter(Boolean);
+      const pizzaNames=names.length ? names : [title];
+
+      pizzaNames.forEach(pizzaName=>{
+        sizeData.forEach(({size,price})=>{
+          addButton(card,`${pizzaName} — ${size}`,price,`🛒 Add ${size} ₹${price}`);
+        });
       });
       return;
     }
