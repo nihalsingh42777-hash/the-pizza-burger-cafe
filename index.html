@@ -75,6 +75,10 @@
 .cod-error{display:none;color:#b91c1c;font-size:13px;font-weight:700}
 </style>
 
+
+<style>
+.customizer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center;z-index:10000;padding:12px}.customizer-overlay.open{display:flex}.customizer{width:min(620px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px 22px 14px 14px;box-shadow:0 18px 60px rgba(0,0,0,.3);padding:20px}.customizer-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.customizer-head h3{margin:0;color:#09263b;font-size:22px}.customizer-close{border:0;background:#eee;border-radius:50%;width:38px;height:38px;font-size:24px;cursor:pointer}.customizer-section{margin-top:18px}.customizer-section h4{margin:0 0 10px;font-size:16px;color:#222}.custom-option{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #e5e7eb;border-radius:12px;padding:11px 12px;margin:7px 0;cursor:pointer}.custom-option input{width:18px;height:18px;accent-color:#ffb800}.custom-option-left{display:flex;align-items:center;gap:9px}.custom-option-price{font-weight:800;color:#15803d}.custom-total{display:flex;justify-content:space-between;font-size:21px;font-weight:900;border-top:1px solid #eee;margin-top:18px;padding-top:16px}.custom-add{width:100%;border:0;border-radius:13px;padding:14px;background:#ffb800;color:#111;font-weight:900;font-size:16px;cursor:pointer;margin-top:12px}.custom-note{font-size:12px;color:#777;margin-top:8px}.custom-size-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.custom-size{border:1.5px solid #ddd;border-radius:12px;padding:11px;text-align:center;cursor:pointer}.custom-size.active{border-color:#ffb800;background:#fff8df}.custom-size strong{display:block}.custom-size span{font-weight:800;color:#15803d;font-size:14px}.customizer .addon-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.customizer .addon-grid .custom-option{margin:0}@media(max-width:430px){.customizer{padding:16px}.custom-size-grid{grid-template-columns:1fr 1fr 1fr}.customizer .addon-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body><header><div class="wrap"><a class="brand" href="#home">The Pizza <span>Burger</span> Cafe</a><nav class="nav"><a href="#menu">Menu</a><a href="#visit">Visit</a><a class="wa" href="https://wa.me/917011518505?text=Hi%20The%20Pizza%20Burger%20Cafe%2C%20I%20want%20to%20place%20an%20order." target="_blank">WhatsApp</a></nav></div></header>
 <section class="hero" id="home"><div class="wrap hero-grid"><div><span class="eyebrow">🍕 PURE VEG • RAM NAGAR, DELHI</span><h1>The Pizza <em>Burger</em> Cafe</h1><p>Fresh, cheesy and loaded with flavour. Order directly on WhatsApp or visit us at Ram Nagar.</p><div class="actions"><a class="btn primary" href="https://wa.me/917011518505?text=Hi%20The%20Pizza%20Burger%20Cafe%2C%20I%20want%20to%20place%20an%20order." target="_blank">💬 Order on WhatsApp</a><a class="btn gold" href="#menu">🍔 View Menu</a><a class="btn ghost" href="tel:7011518505">📞 Call Now</a></div></div><div class="hero-card"><div class="big">11 AM – 11 PM</div><p>Open all days</p><div class="info">📍 <b>Ram Nagar, Delhi</b><br><small>Near Aggarwal Sweets, Indira Pyau</small></div><div class="info">🚗 <b>Easy directions</b><br><small>Tap Get Directions below</small></div></div></div></section>
@@ -342,68 +346,99 @@ function showMenu(id,btn){
     card.appendChild(b);
   }
 
-  // Fixed-price menu cards.
+  // Pizza customization modal (Domino's-style flow, with The Pizza Burger Cafe pricing).
+  const customOverlay=document.createElement('div');
+  customOverlay.className='customizer-overlay';
+  customOverlay.innerHTML=`
+    <div class="customizer" role="dialog" aria-modal="true" aria-label="Customize pizza">
+      <div class="customizer-head"><div><h3 id="customTitle">Customize Pizza</h3><div class="custom-note">Choose size, base and extras</div></div><button class="customizer-close" type="button">×</button></div>
+      <div class="customizer-section"><h4>Choose Size</h4><div id="customSizes" class="custom-size-grid"></div></div>
+      <div class="customizer-section"><h4>Choose Base</h4><div id="customBase"></div><div class="custom-note" style="margin-top:6px">Cheese Burst Base ₹70 is available with Regular size.</div></div>
+      <div class="customizer-section"><h4>Extra Toppings <span class="custom-note">(₹30 each)</span></h4><div id="customToppings" class="addon-grid"></div></div>
+      <div class="customizer-section"><h4>Extras</h4><div id="customExtras"></div></div>
+      <div class="custom-total"><span>Total</span><span id="customTotal">₹0</span></div>
+      <button class="custom-add" id="customAdd" type="button">🛒 Add to Cart</button>
+    </div>`;
+  document.body.appendChild(customOverlay);
+  const cTitle=customOverlay.querySelector('#customTitle'), cSizes=customOverlay.querySelector('#customSizes'), cBase=customOverlay.querySelector('#customBase'), cToppings=customOverlay.querySelector('#customToppings'), cExtras=customOverlay.querySelector('#customExtras'), cTotal=customOverlay.querySelector('#customTotal');
+  let customState=null;
+  const toppingNames=['Onion','Capsicum','Tomato','Corn','Jalapeno','Paneer','Mushroom','Olives'];
+  function opt(label,price,type,name,id,checked=false,disabled=false){return `<label class="custom-option${disabled?' disabled':''}"><span class="custom-option-left"><input type="${type}" name="${name}" data-id="${id}" data-price="${price}" ${checked?'checked':''} ${disabled?'disabled':''}>${label}</span><span class="custom-option-price">${price?`+₹${price}`:'₹0'}</span></label>`}
+  function updateCustom(){
+    if(!customState)return;
+    const size=customState.sizes[customState.sizeIndex];
+    let total=size.price;
+    const base=customOverlay.querySelector('input[name="base"]:checked'); if(base) total+=Number(base.dataset.price);
+    customOverlay.querySelectorAll('#customToppings input:checked,#customExtras input:checked').forEach(x=>total+=Number(x.dataset.price));
+    cTotal.textContent=money(total);
+  }
+  function openCustomizer(pizzaName,sizes){
+    customState={pizzaName,sizes,sizeIndex:0};
+    cTitle.textContent=pizzaName;
+    cSizes.innerHTML=sizes.map((x,i)=>`<button type="button" class="custom-size ${i===0?'active':''}" data-i="${i}"><strong>${x.size}</strong><span>₹${x.price}</span></button>`).join('');
+    cBase.innerHTML=opt('Regular Base',0,'radio','base','regular',true)+opt('Cheese Burst Base +₹70',70,'radio','base','burst',false);
+    cToppings.innerHTML=toppingNames.map((n,i)=>opt(n,30,'checkbox','topping','t'+i)).join('');
+    cExtras.innerHTML=opt('Extra Cheese',40,'checkbox','extra','cheese')+opt('Cheesy Dip',25,'checkbox','extra','dip');
+    customOverlay.classList.add('open'); updateCustom();
+    cSizes.querySelectorAll('.custom-size').forEach(btn=>btn.addEventListener('click',()=>{
+      cSizes.querySelectorAll('.custom-size').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      customState.sizeIndex=Number(btn.dataset.i);
+      const burst=customOverlay.querySelector('input[data-id="burst"]');
+      const isRegular=/^regular$/i.test(customState.sizes[customState.sizeIndex].size);
+      if(burst){
+        burst.disabled=!isRegular;
+        burst.closest('.custom-option').classList.toggle('disabled',!isRegular);
+        if(!isRegular) burst.checked=false;
+      }
+      updateCustom();
+    }));
+    customOverlay.querySelectorAll('input').forEach(i=>i.addEventListener('change',updateCustom));
+  }
+  customOverlay.querySelector('.customizer-close').addEventListener('click',()=>customOverlay.classList.remove('open'));
+  customOverlay.addEventListener('click',e=>{if(e.target===customOverlay)customOverlay.classList.remove('open')});
+  customOverlay.querySelector('#customAdd').addEventListener('click',()=>{
+    const size=customState.sizes[customState.sizeIndex]; const selected=[];
+    const base=customOverlay.querySelector('input[name="base"]:checked');    if(base && Number(base.dataset.price)>0) selected.push('Cheese Burst Base +₹70');
+    customOverlay.querySelectorAll('#customToppings input:checked').forEach(x=>{
+      const label=x.closest('label').querySelector('.custom-option-left').textContent.trim();
+      selected.push(`${label} +₹30`);
+    });
+    customOverlay.querySelectorAll('#customExtras input:checked').forEach(x=>{
+      const p=Number(x.dataset.price);
+      const label=x.closest('label').querySelector('.custom-option-left').textContent.trim();
+      selected.push(`${label} +₹${p}`);
+    });
+    let total=size.price+(base?Number(base.dataset.price):0); customOverlay.querySelectorAll('#customToppings input:checked,#customExtras input:checked').forEach(x=>total+=Number(x.dataset.price));
+    const detail=selected.length?` (${selected.join(', ')})`:'';
+    addItem(`${customState.pizzaName} — ${size.size}${detail}`,total); customOverlay.classList.remove('open');
+  });
+
+  // Menu cards.
   document.querySelectorAll('.menu-card').forEach(card=>{
     if(card.closest('#offers')) return;
     const title=card.querySelector('h3')?.textContent.trim();
-    if(!title) return;
-    if(/cold drinks/i.test(title)) return;
-
-    // Pizza cards: add every individual pizza name with each size/price.
+    if(!title || /cold drinks/i.test(title)) return;
     const sizeSpans=card.querySelectorAll('.size-row span');
     if(sizeSpans.length){
-      const sizeData=[...sizeSpans].map((span,index)=>{
-        const m=span.textContent.match(/₹\s*(\d+)/);
-        if(!m) return null;
-        const fallback=['Regular','Medium','Large'][index] || `Size ${index+1}`;
-        const raw=span.textContent.trim();
-        const size=(raw.match(/^(Regular|Medium|Large)/i)?.[1]) || fallback;
-        return {size,price:Number(m[1])};
-      }).filter(Boolean);
-
-      // The pizza names are listed in the paragraph directly under the heading.
-      const desc=card.querySelector('p')?.textContent || '';
+      const sizeData=[...sizeSpans].map((span,index)=>{const m=span.textContent.match(/₹\s*(\d+)/);if(!m)return null;const raw=span.textContent.trim();const size=(raw.match(/^(Regular|Medium|Large)/i)?.[1])||['Regular','Medium','Large'][index]||`Size ${index+1}`;return {size,price:Number(m[1])};}).filter(Boolean);
+      const desc=card.querySelector('p')?.textContent||'';
       const names=desc.split('•').map(x=>x.trim()).filter(Boolean);
-      const pizzaNames=names.length ? names : [title];
-
-      pizzaNames.forEach(pizzaName=>{
-        sizeData.forEach(({size,price})=>{
-          addButton(card,`${pizzaName} — ${size}`,price,`🛒 Add ${size} ₹${price}`);
-        });
+      (names.length?names:[title]).forEach(pizzaName=>{
+        const b=document.createElement('button'); b.type='button'; b.className='add-cart-btn'; b.textContent='🍕 Customize & Add'; b.addEventListener('click',()=>openCustomizer(pizzaName,sizeData)); card.appendChild(b);
       });
       return;
     }
-
-    // Normal fixed-price cards.
     const priceEl=card.querySelector('.menu-price');
-    if(priceEl){
-      const m=priceEl.textContent.match(/₹\s*(\d+)/);
-      if(m) addButton(card,title,Number(m[1]),`🛒 Add ${money(Number(m[1]))}`);
-    }
-
-    // Peri Peri Fries is a second priced option in the description.
-    if(title==='French Fries'){
-      const p=Array.from(card.querySelectorAll('p')).find(x=>/Peri Peri Fries/i.test(x.textContent));
-      const m=p?.textContent.match(/Peri Peri Fries\s*₹\s*(\d+)/i);
-      if(m) addButton(card,'Peri Peri Fries',Number(m[1]),`🛒 Add ₹${m[1]}`);
-    }
+    if(priceEl){const m=priceEl.textContent.match(/₹\s*(\d+)/);if(m)addButton(card,title,Number(m[1]),`🛒 Add ${money(Number(m[1]))}`);}
+    if(title==='French Fries'){const p=Array.from(card.querySelectorAll('p')).find(x=>/Peri Peri Fries/i.test(x.textContent));const m=p?.textContent.match(/Peri Peri Fries\s*₹\s*(\d+)/i);if(m)addButton(card,'Peri Peri Fries',Number(m[1]),`🛒 Add ₹${m[1]}`);}
   });
 
-  // Mini pizza party has individual named options in its description.
   const mini=document.querySelector('#pizzas .menu-card:last-child');
-  if(mini){
-    const buttons=mini.querySelectorAll('.add-cart-btn');
-    if(!buttons.length){
-      const opts=[
-        ['Mini Pizza — Onion',65],['Mini Pizza — Capsicum',75],['Mini Pizza — Tomato',75],['Mini Pizza — Corn',75],
-        ['Mini Pizza — Onion & Capsicum',90],['Mini Pizza — Jalapeno & Corn',90],
-        ['Mini Pizza — Paneer & Onion',90],['Mini Pizza — Tomato & Corn',90]
-      ];
-      opts.forEach(([n,p])=>addButton(mini,n,p,`🛒 Add ₹${p}`));
-    }
-  }
+  if(mini){const buttons=mini.querySelectorAll('.add-cart-btn');if(!buttons.length){[['Mini Pizza — Onion',65],['Mini Pizza — Capsicum',75],['Mini Pizza — Tomato',75],['Mini Pizza — Corn',75],['Mini Pizza — Onion & Capsicum',90],['Mini Pizza — Jalapeno & Corn',90],['Mini Pizza — Paneer & Onion',90],['Mini Pizza — Tomato & Corn',90]].forEach(([n,p])=>addButton(mini,n,p,`🛒 Add ₹${p}`));}}
 
   render();
+
 })();
 </script>
 
